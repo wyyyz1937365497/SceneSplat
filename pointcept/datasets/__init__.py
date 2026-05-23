@@ -7,6 +7,7 @@ from .scannetgs import ScanNetGSDataset, ScanNet200GSDataset
 from .scannetppgs import ScanNetPPGSDataset
 from .matterport3dgs import Matterport3DGSDataset
 from .holicitygs import HoliCityGSDataset
+from .interior_gs import InteriorGSDataset
 from .generic_gs import GenericGSDataset
 
 # outdoor scene
