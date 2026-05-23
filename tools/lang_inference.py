@@ -10,11 +10,14 @@ PYTHONPATH=. python tools/lang_inference.py \
 import argparse
 import json
 import os
+from pathlib import Path
 
 import numpy as np
 
 from pointcept.inference import LangPretrainerInference
 from pointcept.utils.config import Config
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def parse_args():
@@ -49,7 +52,45 @@ def parse_args():
         default=None,
         help="Optional path to save a JSON summary of produced features.",
     )
+    parser.add_argument(
+        "--pca-vis",
+        action="store_true",
+        help="Run PCA visualization after inference using the saved feature output.",
+    )
+    parser.add_argument(
+        "--pca-method",
+        choices=("pc123_pct01_99_q6", "baseline_mix075_minmax_q6"),
+        default="pc123_pct01_99_q6",
+        help="PCA color mapping used by --pca-vis.",
+    )
+    parser.add_argument(
+        "--pca-brightness",
+        type=float,
+        default=1.25,
+        help="Brightness multiplier for --pca-vis colors.",
+    )
+    parser.add_argument(
+        "--pca-seed",
+        type=int,
+        default=1219,
+        help="Seed for --pca-vis colorization.",
+    )
     return parser.parse_args()
+
+
+def _default_output_dir():
+    return _REPO_ROOT / "outputs"
+
+
+def _resolve_saved_backbone_path(inferencer, scene_name):
+    if not inferencer.save_backbone:
+        raise ValueError(
+            "`--pca-vis` requires inference.save_features.backbone.enabled=True."
+        )
+    if not inferencer.output_dir:
+        raise ValueError("`--pca-vis` requires an output directory for saved features.")
+    file_name = inferencer.backbone_save_cfg.get("file_name", "feat.pt")
+    return Path(inferencer._resolve_output_path(scene_name, file_name))
 
 
 def main():
@@ -85,6 +126,12 @@ def main():
     )
     if args.output_dir is not None:
         inferencer.output_dir = args.output_dir
+    elif args.pca_vis and not inferencer.output_dir:
+        inferencer.output_dir = str(_default_output_dir())
+    if args.pca_vis and not args.no_save and not inferencer.save_backbone:
+        raise ValueError(
+            "`--pca-vis` requires inference.save_features.backbone.enabled=True."
+        )
 
     outputs = inferencer(
         data_dict,
@@ -100,6 +147,42 @@ def main():
         ),
         "metadata_keys": list(outputs["metadata"].keys()),
     }
+
+    if args.pca_vis:
+        if args.no_save:
+            if backbone is None:
+                raise RuntimeError("PCA visualization requires model features in memory.")
+            from scripts.pca_colorize_features import run_pca_visualization_from_features
+
+            pca_summary = run_pca_visualization_from_features(
+                features=backbone,
+                input_root=args.input_root,
+                output_dir=inferencer.output_dir,
+                scene_name=outputs["name"],
+                pca_method=args.pca_method,
+                brightness=args.pca_brightness,
+                pca_seed=args.pca_seed,
+            )
+        else:
+            feature_path = _resolve_saved_backbone_path(inferencer, outputs["name"])
+            if not feature_path.exists():
+                raise FileNotFoundError(
+                    f"PCA visualization expected a saved feature file at {feature_path}, "
+                    "but it was not found."
+                )
+
+            from scripts.pca_colorize_features import run_pca_visualization
+
+            pca_summary = run_pca_visualization(
+                feature_path=feature_path,
+                input_root=args.input_root,
+                output_dir=inferencer.output_dir,
+                scene_name=outputs["name"],
+                pca_method=args.pca_method,
+                brightness=args.pca_brightness,
+                pca_seed=args.pca_seed,
+            )
+        summary["pca_visualization"] = pca_summary
 
     if args.dump_json:
         with open(args.dump_json, "w") as f:

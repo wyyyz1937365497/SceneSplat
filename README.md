@@ -80,6 +80,14 @@ We recommend using the already provided preprocessed 3DGS scenes for the pretrai
 ```
 For the original 3DGS scenes, please download the preprocessed ScanNet, ScanNet++, and Matterport3D 3DGS scenes from the [data repository](https://huggingface.co/datasets/GaussianWorld/scene_splat_7k), where you have to agree to the [License](https://huggingface.co/datasets/GaussianWorld/scene_splat_7k#dataset-license) first. 
 
+To download only the base 3DGS parameter releases without language feature files or pre-chunked folders, use:
+```bash
+python -m scripts.download_base_3dgs \
+    --output-root /path/to/gaussian_world/base_3dgs \
+    --datasets scannet scannetpp matterport3d
+```
+The script skips `lang_feat.npy`, `valid_feat_mask.npy`, `lang_feat_index.npy`, and `*_grid*` folders.
+
 For preprocessed data, note only part of the uploaded folders are use for pretraining, please refer to [Preprocessed Pretraining Data](https://huggingface.co/datasets/GaussianWorld/scene_splat_7k#preprocessed-language-pretraining-data) when downloading.
 
 ## Pretraining Configs
@@ -273,15 +281,65 @@ python tools/train.py \
 ## Working with Custom Data
 We cover using custom 3DGS scenes for vision-language feature inference.
 
-**Inference on custom 3DGS scenes.** Please use the example script `scripts/preprocess_gs.py` to preprocess the 3DGS scenes into `*.npy` files. The inference requires the per-scene folder under a root path.
+**Inference on custom 3DGS scenes.** Please use the example script `scripts/preprocess_gs.py` to preprocess a 3DGS PLY into `*.npy` files. The inference script expects one preprocessed scene folder containing arrays such as `coord.npy`, `color.npy`, `opacity.npy`, `scale.npy`, and `quat.npy`.
 
-Please find the following steps:
+```bash
+python -m scripts.preprocess_gs \
+    --input /path/to/scene.ply \
+    --output /path/to/preprocessed_scene
+```
+
+Run standalone feature inference with the released inference config:
+
+```bash
+python -m tools.lang_inference \
+    --config configs/inference/lang-pretrain-pt-v3m1-3dgs.py \
+    --checkpoint /path/to/model_best.pth \
+    --input-root /path/to/preprocessed_scene \
+    --output-dir /path/to/output_dir
+```
+
+The saved feature tensor is `<output-dir>/<scene>_feat.pt` and has shape `(N, 768)`, aligned with the input Gaussians. This feature is the full-resolution PT-v3 decoder output returned by the backbone module, not the deepest encoder token feature.
+
+To write PCA visualization PLY files immediately after inference, add `--pca-vis`:
+
+```bash
+python -m tools.lang_inference \
+    --config configs/inference/lang-pretrain-pt-v3m1-3dgs.py \
+    --checkpoint /path/to/model_best.pth \
+    --input-root /path/to/preprocessed_scene \
+    --output-dir /path/to/output_dir \
+    --pca-vis
+```
+
+To skip saving the intermediate feature tensor and only write PCA visualization outputs, combine `--pca-vis` with `--no-save`:
+
+```bash
+python -m tools.lang_inference \
+    --config configs/inference/lang-pretrain-pt-v3m1-3dgs.py \
+    --checkpoint /path/to/model_best.pth \
+    --input-root /path/to/preprocessed_scene \
+    --output-dir /path/to/output_dir \
+    --pca-vis \
+    --no-save
+```
+
+PCA visualization writes two PLY files with the same PCA colors: `<scene>_pca_colored.ply` is a colored point cloud using Gaussian centers as points, while `<scene>_feat_vis_3dgs.ply` is a renderable 3DGS PLY that keeps Gaussian splats but replaces SH color with PCA feature colors.
+
+To run PCA visualization as a separate step, use an existing saved feature file:
+
+```bash
+python -m scripts.pca_colorize_features \
+    --feature-path /path/to/output_dir/<scene>_feat.pt \
+    --input-root /path/to/preprocessed_scene \
+    --output-dir /path/to/output_dir
+```
+
+For the older tester-only workflow:
 - Inherit the training config file, e.g., [config](configs/concat_dataset/lang-pretrain-concat-scan-ppv2-matt-mcmc-wo-normal-contrastive.py), and set `test_only=True`. In this way, all data loading will be bypassed and unrelated, only the tester will run.
 - Set `skip_eval=True` and `save_feat=True` in the tester settings, then load the model checkpoint with `weight=/path/to/pth`
 - Remove `class_names`, `text_embeddings` and `excluded_classes` settings in the tester config,
 - In the `data['test']` config, adjust the `data_root` path and `split` folder, and change the dataset type to `GenericGSDataset`.
-
-The tester will output inference feature of shape `(N, 768)` which corresponds to each input Gaussian.
 
 If further quantitative evaluation is needed for zero-shot semantic segmentation:
 - Semantic segmentation labels are needed for this 3DGS scene:
