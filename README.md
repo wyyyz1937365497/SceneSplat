@@ -335,6 +335,29 @@ python -m scripts.pca_colorize_features \
     --output-dir /path/to/output_dir
 ```
 
+**Mini Viewer.** We support view the 3DGS scene together with the saved SceneSplat feature tensor in Mini Viewer. Install the Mini Viewer with:
+
+```bash
+python -m pip install "nerfview>=0.1.3" "splines>=0.3" \
+    "git+https://github.com/RunyiYang/Mini_Viewer.git@6c8e5c938844487319a92e19f952e76cd4eba847"
+```
+
+Mini Viewer uses `gsplat` for the fast CUDA renderer. Run this once after installation so the first viewer session does not spend time compiling the CUDA extension:
+
+```bash
+python -m tools.mini_viewer --precompile-gsplat
+```
+
+After running `tools.lang_inference`, launch the viewer with the same input scene and output directory:
+
+```bash
+python -m tools.mini_viewer \
+    --input-root /path/to/preprocessed_scene \
+    --output-dir /path/to/output_dir
+```
+
+By default this opens `<output-dir>/<scene>_feat.pt`, the 768-D SceneSplat decoder feature aligned with the input Gaussians.
+
 For the older tester-only workflow:
 - Inherit the training config file, e.g., [config](configs/concat_dataset/lang-pretrain-concat-scan-ppv2-matt-mcmc-wo-normal-contrastive.py), and set `test_only=True`. In this way, all data loading will be bypassed and unrelated, only the tester will run.
 - Set `skip_eval=True` and `save_feat=True` in the tester settings, then load the model checkpoint with `weight=/path/to/pth`
