@@ -85,7 +85,7 @@ class LangPretrainer(nn.Module):
         self.backbone = build_model(backbone)
         self.criteria = build_criteria(criteria)
 
-    def forward(self, input_dict, chunk_size=None):
+    def forward(self, input_dict, chunk_size=None, return_backbone=False):
         if (
             chunk_size is not None
             and chunk_size > 0

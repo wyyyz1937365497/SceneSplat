@@ -26,3 +26,4 @@ exp/
 *.ply
 *.pth
 data/
+*.pt

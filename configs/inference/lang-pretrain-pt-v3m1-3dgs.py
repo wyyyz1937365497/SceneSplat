@@ -24,7 +24,7 @@ model = dict(
         shuffle_orders=True,
         pre_norm=True,
         enable_rpe=False,
-        enable_flash=True,
+        enable_flash=False,
         upcast_attention=False,
         upcast_softmax=False,
         cls_mode=False,
@@ -131,7 +131,7 @@ inference = dict(
             ]
         ],
     ),
-    chunk_size=600000,
+    chunk_size=50000,
     save_features=dict(
         output_dir=None,
         backbone=dict(enabled=True, file_name="feat.pt"),
