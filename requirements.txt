@@ -9,10 +9,12 @@
 # Install order:
 #   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
 #   pip install -r requirements.txt
-#   pip install torch-scatter torch-sparse torch-cluster \
-#       -f https://data.pyg.org/whl/torch-2.5.1+cu124.html
+torch-scatter
+ torch-sparse
+  torch-cluster
 #   # CUDA extensions (need cl.exe on PATH, do NOT run inside vcvars64 shell):
-#   pip install ./libs/pointops ./libs/pointgroup_ops -v --no-build-isolation
+./libs/pointops
+./libs/pointgroup_ops
 
 # ---- Core deep learning ----
 torch==2.5.1
@@ -55,9 +57,9 @@ matplotlib==3.10.3
 ninja
 
 # ---- Optional: tokenizer for label encoding ----
-# git+https://github.com/openai/CLIP.git
+git+https://github.com/openai/CLIP.git
 
 # ---- NOT required on Windows ----
 # SharedArray==3.2.4     # POSIX-only (sys/mman.h); cache.py degrades gracefully
 # flash-attn             # config sets enable_flash=False
-# ocnn                   # only needed for OctFormer model, not PT-v3
+ocnn                   # only needed for OctFormer model, not PT-v3
