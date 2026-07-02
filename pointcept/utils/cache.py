@@ -1,5 +1,9 @@
 import os
-import SharedArray
+
+try:
+    import SharedArray
+except ImportError:
+    SharedArray = None  # Windows 无 POSIX shm，推理流程不调用此路径
 
 try:
     from multiprocessing.shared_memory import ShareableList
@@ -11,6 +15,12 @@ import numpy as np
 
 
 def shared_array(name, var=None):
+    if SharedArray is None:
+        raise RuntimeError(
+            "SharedArray not installed (Windows lacks POSIX shm). "
+            "This code path is only used during multi-process training data loading; "
+            "standalone inference does not require it."
+        )
     if var is not None:
         # check exist
         if os.path.exists(f"/dev/shm/{name}"):

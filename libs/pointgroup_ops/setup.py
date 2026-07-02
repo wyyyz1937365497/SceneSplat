@@ -1,13 +1,15 @@
 import os
+import platform
 from sys import argv
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 from distutils.sysconfig import get_config_vars
 
 (opt,) = get_config_vars("OPT")
-os.environ["OPT"] = " ".join(
-    flag for flag in opt.split() if flag != "-Wstrict-prototypes"
-)
+if opt:
+    os.environ["OPT"] = " ".join(
+        flag for flag in opt.split() if flag != "-Wstrict-prototypes"
+    )
 
 
 def _argparse(pattern, argv, is_flag=True, is_list=False):
@@ -51,7 +53,10 @@ setup(
         CUDAExtension(
             name="pointgroup_ops_cuda",
             sources=["src/bfs_cluster.cpp", "src/bfs_cluster_kernel.cu"],
-            extra_compile_args={"cxx": ["-g"], "nvcc": ["-O2"]},
+            extra_compile_args={
+                "cxx": ["/O2"] if platform.system() == "Windows" else ["-g"],
+                "nvcc": ["-O2"],
+            },
         )
     ],
     include_dirs=[*include_dirs],

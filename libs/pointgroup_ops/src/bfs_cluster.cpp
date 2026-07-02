@@ -12,7 +12,9 @@ All Rights Reserved 2020.
 #include <array>
 #include <vector>
 #include <queue>
-#include <google/dense_hash_map>
+// Removed: #include <google/dense_hash_map>
+// This header was included but never used in the codebase (dead include).
+// google-sparsehash is unmaintained and has no Windows support.
 
 int ballquery_batch_p_cuda(int n, int meanActive, float radius, const float *xyz, const int *batch_idxs, const int *batch_offsets, int *idx, int *start_len, cudaStream_t stream);
 
@@ -83,12 +85,13 @@ ConnectedComponent find_cc(Int idx, int *semantic_label, Int *ball_query_idxs, i
 //input: start_len, int, (N, 2)
 //output: clusters, CCs
 int get_clusters(int *semantic_label, Int *ball_query_idxs, int *start_len, const Int nPoint, int threshold, ConnectedComponents &clusters){
-    int visited[nPoint] = {0};
+    // MSVC does not support VLAs (variable-length arrays); use std::vector instead.
+    std::vector<int> visited(nPoint, 0);
 
     int sumNPoint = 0;
     for(Int i = 0; i < nPoint; i++){
         if(visited[i] == 0){
-            ConnectedComponent CC = find_cc(i, semantic_label, ball_query_idxs, start_len, visited);
+            ConnectedComponent CC = find_cc(i, semantic_label, ball_query_idxs, start_len, visited.data());
             if((int)CC.pt_idxs.size() >= threshold){
                 clusters.push_back(CC);
                 sumNPoint += (int)CC.pt_idxs.size();
